@@ -6,6 +6,9 @@ function M.new(arg)
    local self = {
       width = arg.width or 16,
       height = arg.height or 16,
+      xoff = arg.xOffset or 0,
+      yoff = arg.yOffset or 0,
+      history = {}
    }
    self.scale = arg.scale or (arg.size or 512) / self.width
    local object = {
@@ -25,8 +28,22 @@ function M.new(arg)
          end
       end
    end
+
+   function object.save()
+      self.history[#self.history+1] = {}
+      for i = 1,#object.cells do
+         self.history[#self.history][i] = object.cells[i]
+      end
+   end
+
+   function object.undo()
+      if #self.history > 0 then
+         object.cells = table.remove(self.history)
+      end
+   end
    
    function object.draw()
+      love.graphics.translate(self.xoff, self.yoff)
       for y = 1,self.height do
          for x = 1,self.width do
             local colour = object.colourmap[object.cells[x+(y-1)*self.width]+1] or {0,0,0}
@@ -43,9 +60,10 @@ function M.new(arg)
          love.graphics.line(x*self.scale, 0, x*self.scale, self.height*self.scale)
       end
       love.graphics.setColor({255,255,255})
+      love.graphics.translate(-self.xoff, -self.yoff)
    end
    
-   local function isActive(x,y) 
+   local function isActive(x,y)
       if x <= 0 then return false end
       if y <= 0 then return false end
       if x > self.width then return false end
@@ -92,9 +110,11 @@ function M.new(arg)
       object.cells = new
    end
    
-   function object.toggleoff(x,y)
-      if x < 0 then return -1 end
-      if y < 0 then return -1 end
+   function object.toggleOff(x,y)
+      x = x - self.xoff
+      y = y - self.yoff
+      if x <= 0 then return -1 end
+      if y <= 0 then return -1 end
       if x > self.width*self.scale then return -1 end
       if y > self.width*self.scale then return -1 end
       local i =  math.ceil(x / self.scale) + math.ceil(y / self.scale - 1)*self.width
@@ -106,9 +126,11 @@ function M.new(arg)
       return object.cells[i]
    end
 
-   function object.cyclewire(x,y)
-      if x < 0 then return -1 end
-      if y < 0 then return -1 end
+   function object.cycleWire(x,y)
+      x = x - self.xoff
+      y = y - self.yoff
+      if x <= 0 then return -1 end
+      if y <= 0 then return -1 end
       if x > self.width*self.scale then return -1 end
       if y > self.width*self.scale then return -1 end
       local i =  math.ceil(x / self.scale) + math.ceil(y / self.scale - 1)*self.width
@@ -118,18 +140,23 @@ function M.new(arg)
       return object.cells[i]
    end
    
-   function object.setcell(x,y,val)
-      if x < 0 then return end
-      if y < 0 then return end
+   function object.setCell(x,y,val)
+      x = x - self.xoff
+      y = y - self.yoff
+      if x <= 0 then return end
+      if y <= 0 then return end
       if x > self.width*self.scale then return end
       if y > self.width*self.scale then return end
       local i =  math.ceil(x / self.scale) + math.ceil(y / self.scale - 1)*self.width
       object.cells[i] = val
    end
 
-   function object.getsubcircuit(x1, y1, x2, y2)
-      if x1 < 0  or y1 < 0 or x1 > self.width*self.scale or y1 > self.width*self.scale or
-        x2 < 0  or y2 < 0 or x2 > self.width*self.scale or y2 > self.width*self.scale then
+   function object.getSubCircuit(x1, y1, x2, y2)
+      x1 = math.max(math.min(x1-self.xoff,self.width*self.scale),0)
+      y1 = math.max(math.min(y1-self.yoff,self.height*self.scale),0)
+      x2 = math.max(math.min(x2-self.xoff,self.width*self.scale),0)
+      y2 = math.max(math.min(y2-self.yoff,self.height*self.scale),0)
+      if math.abs(x1-x2) < 1  or math.abs(x1-x2) < 1 then
         return M.new({width = 1, height = 1, scale = self.scale})
       end
       local xmin = math.floor(math.min(x1,x2)/self.scale)
@@ -143,6 +170,25 @@ function M.new(arg)
          end
       end
       return M.new(ret)
+   end
+
+   function object.pasteWires(x, y, circuit)
+      x = x - self.xoff
+      y = y - self.yoff
+      x = math.floor(x/self.scale)
+      y = math.floor(y/self.scale)
+      local width = math.min(self.width-x,circuit.width())
+      local height = math.min(self.height-y,circuit.height())
+      for cy = 1,height do
+         for cx = 1,width do
+            if x + cx > 0 and y + cy > 0 then
+               local cell = circuit.cells[cx + (cy-1)*circuit.width()]
+               if cell > 0 then
+                  object.cells[x + cx + (y + cy - 1)*self.width] = cell
+               end
+            end
+         end
+      end
    end
 
    function object.width()

@@ -2,16 +2,24 @@ local circuit = require "circuit"
 
 local c = {}
 
-local paused = false
+local cmap = {{16,16,16,0}, {0,0,255,64}, {255,0,0,64}, {255,255,0,64}}
+
+local paused = true
 local selecting = false
 local selected = nil
 local time = 0
 local dragAction = -1
 local startX = -1
 local startY = -1
+local oldX = -1
+local oldY = -1
 
 function love.load()
-   c = circuit.new({size=512,width=32,height=32})
+   c = circuit.new({size=512,width=32,height=32,xOffset=128,yOffset=64})
+end
+
+local function pasting()
+   return selected and (selected.width() > 1 or selected.height() > 1)
 end
 
 function love.draw()
@@ -24,13 +32,15 @@ function love.draw()
       local y = math.floor(math.min(love.mouse.getY(),startY)/scale)
       local w = math.ceil(math.max(love.mouse.getX(),startX)/scale)-x
       local h = math.ceil(math.max(love.mouse.getY(),startY)/scale)-y
-      love.graphics.rectangle("fill", x*scale, y*scale, w*scale, h*scale)
-   elseif selected and (selected.width() > 1 or selected.height() > 1) then
+      love.graphics.rectangle("line", x*scale, y*scale, w*scale, h*scale)
+   elseif pasting() then
       local scale = selected.scale()
       local x = math.floor(love.mouse.getX()/scale)
       local y = math.floor(love.mouse.getY()/scale)
       love.graphics.translate(x*scale, y*scale)
       selected.draw()
+      love.graphics.translate(-x*scale, -y*scale)
+      love.graphics.rectangle("line", x*scale, y*scale, selected.width()*scale, selected.height()*scale)
    end
 end
 
@@ -46,28 +56,63 @@ function love.update(dt)
    if dragAction >= 0 then
       local x = love.mouse.getX()
       local y = love.mouse.getY()
-      c.setcell(x, y, dragAction)
+      c.setCell(x, y, dragAction)
+      if oldX > 0 and oldY > 0 then
+         local dx = x-oldX
+         local dy = y-oldY
+         local norm = math.sqrt(dx*dx+dy*dy)
+         if norm > 1 then
+            dx = dx/norm
+            dy = dy/norm
+            for dist = 1,math.floor(norm) do
+               c.setCell(oldX+dist*dx, oldY+dist*dy, dragAction)
+            end
+         end
+      end
+      oldX = x
+      oldY = y
+   else
+      oldX = -1
+      oldy = -1
    end
 end
 
 function love.mousepressed(x, y, button)
-   if button == 'l' then
-      dragAction = c.toggleoff(x,y)
-   elseif button == 'r' then
-      selecting = true
-      startX = x
-      startY = y
+   if paused then
+      if button == 'l' then
+         c.save()
+         if pasting() then
+            c.pasteWires(x,y,selected)
+         elseif (love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')) then
+            c.cycleWire(x,y)
+         else
+            dragAction = c.toggleOff(x,y)
+            oldX = x
+            oldY = y
+         end
+      elseif button == 'r' then
+         selecting = true
+         startX = x
+         startY = y
+      end
    end
 end
 
 function love.mousereleased(x, y, button)
    if button == 'l' then
       dragAction = -1
-   elseif button == 'r' then
+   elseif paused and button == 'r' and selecting then
+      c.save()
       selecting = false
-      selected = c.getsubcircuit(startX,startY,x,y)
-      selected.colourmap = {{16,16,16,100}, {0,0,255,100}, {255,0,0,100}, {255,255,0,100}}
-      selected.linecolour = {200,200,200}
+      selected = c.getSubCircuit(startX,startY,x,y)
+      if startY ~= y and startX ~= x then
+         for cy = math.min(startY,y),math.max(startY,y) do
+            for cx = math.min(startX,x),math.max(startX,x) do
+               c.setCell(cx, cy, 0)
+            end
+         end
+      end
+      selected.colourmap = cmap
    end
 end
 
@@ -76,5 +121,7 @@ function love.keypressed(key, unicode)
       (love.event.quit or love.event.push)('q')
    elseif key == ' ' then
       paused = not paused
+   elseif key == 'z' and paused and (love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')) then
+      c.undo()
    end
 end
