@@ -16,6 +16,7 @@ local oldX = -1
 local oldY = -1
 local smallfont = nil
 local bigfont = nil
+local status = "Welcome"
 
 local server = "http://rbf-game.appspot.com/"
 
@@ -29,7 +30,6 @@ end
 
 function getCircuit(c)
    local inputstr = http.request(server)
-   print(inputstr)
    if sep == nil then
       sep = ","
    end
@@ -39,6 +39,12 @@ function getCircuit(c)
       i = i + 1
    end
    c.cells = t
+end
+
+function copyCircuit(a,b)   
+   for i = 1,#a.cells do
+      b.cells[i] = a.cells[i]
+   end
 end
 
 function love.load()
@@ -81,6 +87,7 @@ function love.draw()
    love.graphics.setFont(bigfont)
    love.graphics.printf(math.floor(r1.health),130,10,50,'left')
    love.graphics.printf(math.floor(r2.health),595,10,50,'right')
+   love.graphics.printf(status,330,10,125,'center')
    love.graphics.setFont(smallfont)
    love.graphics.line(200,50,575,50)
    love.graphics.rectangle("fill", 195+r1.position*3.75, 30, 10, 15)
@@ -117,13 +124,13 @@ function love.update(dt)
       time = time - 0.1
    end
    if r1.dead then
-      print("You lose")
+      status = "You lose"
       r2.reset()
       r1.reset()
       paused = true
    end
    if r2.dead then
-      print("You win")
+      status = "You win"
       r1.reset()
       r2.reset()
       paused = true
@@ -200,11 +207,18 @@ function love.keypressed(key, unicode)
    elseif key == ' ' then
       paused = not paused
       if not paused then
+         status = "Loading"
          putCircuit(c1)
          getCircuit(c2)
+         status = "Running"
+      else
+         status = "Aborted"
       end
       r1.reset()
       r2.reset()
+   elseif key == 'l' and paused then
+      c1.save()
+      copyCircuit(c2,c1)
    elseif key == 'z' and paused and (love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')) then
       c1.undo()
    end
