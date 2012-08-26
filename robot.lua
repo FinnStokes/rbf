@@ -32,6 +32,7 @@ function M.new(arg)
    end
 
    function object.reset()
+      object.dead = false
       object.health = arg.health or 100
       object.position = arg.position or 0
       
@@ -42,7 +43,18 @@ function M.new(arg)
          o.reset()
       end
    end
-   
+
+   function object.draw()
+      love.graphics.setColor(255, 255, 255, 255)
+      
+      for _,i in ipairs(object.inputs) do
+         i.draw(self.circuit)
+      end
+      for _,o in ipairs(object.outputs) do
+         o.draw(self.circuit)
+      end
+   end
+
    return object
 end
 
@@ -53,6 +65,12 @@ function M.input(arg)
    }
    local object = {
    }
+   
+   function object.draw(circuit)
+      local x = circuit.xoff - 128
+      local y = circuit.yoff + (self.position-1)*circuit.scale()
+      love.graphics.printf(arg.label,x,y,128,"right")
+   end
    
    function object.update(circuit)
    end
@@ -88,7 +106,7 @@ function M.ctsInput(arg)
    function object.update(circuit)
       super.update(circuit)
       self.ticks = self.ticks - 1
-      if self.ticks <= 0 and object.on then
+      if self.ticks <= 0 and object.on() then
          self.ticks = self.period
          object.ping(circuit)
       end
@@ -109,6 +127,12 @@ function M.output(arg)
    }
    local object = {
    }
+   
+   function object.draw(circuit)
+      local x = circuit.xoff + circuit.width()*circuit.scale() + 5
+      local y = circuit.yoff + (self.position-1)*circuit.scale()
+      love.graphics.printf(arg.label,x,y,128,"left")
+   end
    
    function object.output()
    end
@@ -158,6 +182,44 @@ function M.ctsOutput(arg)
       object.on = false
    end
 
+   return object
+end
+
+function M.range(arg)
+   arg = arg or {}
+   local self = {
+      threshold = arg.threshold or 50,
+      robot = arg.robot,
+      target = arg.target,
+   }
+   local object = M.ctsInput(arg)
+   
+   function object.on()
+      return math.abs(100 - self.robot.position - self.target.position) <= self.threshold
+   end
+   
+   return object
+end
+
+function M.walk(arg)
+   arg = arg or {}
+   local self = {
+      velocity = arg.vel or 1,
+      robot = arg.robot,
+   }
+   local object = M.ctsOutput(arg)
+   
+   local super = {
+      update = object.update
+   }
+   
+   function object.update(circuit)
+      super.update(circuit)
+      if object.on then
+         self.robot.position = math.min(math.max(self.robot.position + self.velocity, 0), 100)
+      end
+   end
+   
    return object
 end
 

@@ -6,14 +6,14 @@ function M.new(arg)
    local self = {
       width = arg.width or 16,
       height = arg.height or 16,
-      xoff = arg.xOffset or 0,
-      yoff = arg.yOffset or 0,
       history = {}
    }
    self.scale = arg.scale or (arg.size or 512) / self.width
    local object = {
       colourmap = arg.colourmap or {{16,16,16}, {0,0,255}, {255,0,0}, {255,255,0}},
       linecolour = arg.linecolour or {0,0,0},
+      xoff = arg.xOffset or 0,
+      yoff = arg.yOffset or 0,
    }
    if arg.cells then
       if #arg.cells ~= self.width*self.height then
@@ -43,7 +43,7 @@ function M.new(arg)
    end
    
    function object.draw()
-      love.graphics.translate(self.xoff, self.yoff)
+      love.graphics.translate(object.xoff, object.yoff)
       for y = 1,self.height do
          for x = 1,self.width do
             local colour = object.colourmap[object.cells[x+(y-1)*self.width]+1] or {0,0,0}
@@ -60,7 +60,7 @@ function M.new(arg)
          love.graphics.line(x*self.scale, 0, x*self.scale, self.height*self.scale)
       end
       love.graphics.setColor({255,255,255})
-      love.graphics.translate(-self.xoff, -self.yoff)
+      love.graphics.translate(-object.xoff, -object.yoff)
    end
    
    local function isActive(x,y)
@@ -111,8 +111,8 @@ function M.new(arg)
    end
    
    function object.toggleOff(x,y)
-      x = x - self.xoff
-      y = y - self.yoff
+      x = x - object.xoff
+      y = y - object.yoff
       if x <= 0 then return -1 end
       if y <= 0 then return -1 end
       if x > self.width*self.scale then return -1 end
@@ -127,8 +127,8 @@ function M.new(arg)
    end
 
    function object.cycleWire(x,y)
-      x = x - self.xoff
-      y = y - self.yoff
+      x = x - object.xoff
+      y = y - object.yoff
       if x <= 0 then return -1 end
       if y <= 0 then return -1 end
       if x > self.width*self.scale then return -1 end
@@ -141,8 +141,8 @@ function M.new(arg)
    end
    
    function object.setCell(x,y,val)
-      x = x - self.xoff
-      y = y - self.yoff
+      x = x - object.xoff
+      y = y - object.yoff
       if x <= 0 then return end
       if y <= 0 then return end
       if x > self.width*self.scale then return end
@@ -152,10 +152,10 @@ function M.new(arg)
    end
 
    function object.getSubCircuit(x1, y1, x2, y2)
-      x1 = math.max(math.min(x1-self.xoff,self.width*self.scale),0)
-      y1 = math.max(math.min(y1-self.yoff,self.height*self.scale),0)
-      x2 = math.max(math.min(x2-self.xoff,self.width*self.scale),0)
-      y2 = math.max(math.min(y2-self.yoff,self.height*self.scale),0)
+      x1 = math.max(math.min(x1-object.xoff,self.width*self.scale),0)
+      y1 = math.max(math.min(y1-object.yoff,self.height*self.scale),0)
+      x2 = math.max(math.min(x2-object.xoff,self.width*self.scale),0)
+      y2 = math.max(math.min(y2-object.yoff,self.height*self.scale),0)
       if math.abs(x1-x2) < 1  or math.abs(x1-x2) < 1 then
         return M.new({width = 1, height = 1, scale = self.scale})
       end
@@ -173,8 +173,8 @@ function M.new(arg)
    end
 
    function object.pasteWires(x, y, circuit)
-      x = x - self.xoff
-      y = y - self.yoff
+      x = x - object.xoff
+      y = y - object.yoff
       x = math.floor(x/self.scale)
       y = math.floor(y/self.scale)
       local width = math.min(self.width-x,circuit.width())
