@@ -45,6 +45,8 @@ function M.new(arg)
    end
 
    function object.draw()
+      self.circuit.draw()
+      
       love.graphics.setColor(255, 255, 255, 255)
       
       for _,i in ipairs(object.inputs) do

@@ -1,6 +1,7 @@
 local circuit = require "circuit"
 local robot = require "robot"
 local weapons = require "weapons"
+local http = require("socket.http")
 
 local cmap = {{16,16,16,0}, {0,0,255,64}, {255,0,0,64}, {255,255,0,64}}
 
@@ -15,6 +16,30 @@ local oldX = -1
 local oldY = -1
 local smallfont = nil
 local bigfont = nil
+
+local server = "http://rbf-game.appspot.com/"
+
+function putCircuit(c)
+   local string = c.cells[1]
+   for i = 2,#c.cells do
+      string = string .. "," .. c.cells[i]
+   end
+   http.request(server,"cells="..string)
+end
+
+function getCircuit(c)
+   local inputstr = http.request(server)
+   print(inputstr)
+   if sep == nil then
+      sep = ","
+   end
+   t={} ; i=1
+   for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+      t[i] = tonumber(str)
+      i = i + 1
+   end
+   c.cells = t
+end
 
 function love.load()
    c1 = circuit.new({size=512,width=32,height=32,xOffset=128,yOffset=64})
@@ -50,7 +75,6 @@ local function pasting()
 end
 
 function love.draw()
-   c1.draw()
    r1.draw()
 
    love.graphics.setColor({255,255,255})
@@ -90,7 +114,6 @@ function love.update(dt)
    while time > 0.1 do
       r1.update()
       r2.update()
-      print(r1.position, r2.position)
       time = time - 0.1
    end
    if r1.dead then
@@ -176,6 +199,10 @@ function love.keypressed(key, unicode)
       (love.event.quit or love.event.push)('q')
    elseif key == ' ' then
       paused = not paused
+      if not paused then
+         putCircuit(c1)
+         getCircuit(c2)
+      end
       r1.reset()
       r2.reset()
    elseif key == 'z' and paused and (love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')) then
