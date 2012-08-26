@@ -1,5 +1,6 @@
 local circuit = require "circuit"
 local robot = require "robot"
+local weapons = require "weapons"
 
 local c = {}
 
@@ -19,17 +20,7 @@ function love.load()
    c = circuit.new({size=512,width=32,height=32,xOffset=128,yOffset=64})
    r = robot.new({circuit = c})
    r.inputs[1] = robot.ctsInput({position=5})
-   local ctsout = robot.ctsOutput({position=5,period=6})
-   local update = ctsout.update
-   ctsout.update = function (circuit)
-                      update(circuit)
-                      if ctsout.on then
-                         print("output")
-                      else
-                         print("no output")
-                      end
-                   end
-   r.outputs[1] = ctsout
+   r.outputs[1] = weapons.laser({target=r,damage=10})
 end
 
 local function pasting()
@@ -64,7 +55,12 @@ function love.update(dt)
    end
    while time > 0.25 do
       r.update()
+      print(r.health)
       time = time - 0.25
+   end
+   if r.dead then
+      print("Dead");
+      (love.event.quit or love.event.push)('q')
    end
    
    if dragAction >= 0 then

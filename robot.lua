@@ -13,15 +13,21 @@ function M.new(arg)
       position = arg.position or 0,
       inputs = {},
       outputs = {},
+      dead = false,
    }
    
    function object.update()
-      self.circuit.update()
-      for _,i in ipairs(object.inputs) do
-         i.update(self.circuit)
+      if object.health <= 0 then
+         object.dead = true
       end
-      for _,o in ipairs(object.outputs) do
-         o.update(self.circuit)
+      if not object.dead then
+         self.circuit.update()
+         for _,i in ipairs(object.inputs) do
+            i.update(self.circuit)
+         end
+         for _,o in ipairs(object.outputs) do
+            o.update(self.circuit)
+         end
       end
    end
 
