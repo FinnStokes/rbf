@@ -195,14 +195,48 @@ end
 function M.range(arg)
    arg = arg or {}
    local self = {
-      threshold = arg.threshold or 50,
+      upper = arg.upper or 50,
+      lower = arg.lower or 0,
       robot = arg.robot,
       target = arg.target,
    }
    local object = M.ctsInput(arg)
    
    function object.on()
-      return math.abs(100 - self.robot.position - self.target.position) <= self.threshold
+     local dist = math.abs(100 - self.robot.position - self.target.position)
+      return dist <= self.upper and dist >= self.lower
+   end
+   
+   return object
+end
+
+function M.direction(arg)
+   arg = arg or {}
+   local self = {
+      robot = arg.robot,
+      target = arg.target,
+   }
+   local object = M.ctsInput(arg)
+   
+   function object.on()
+      return self.robot.position + self.target.position > 100
+   end
+   
+   return object
+end
+
+function M.damage(arg)
+   arg = arg or {}
+   local self = {
+      target = arg.target,
+      oldHealth = 0,
+   }
+   local object = M.ctsInput(arg)
+   
+   function object.on()
+      local res = self.target.health < self.oldHealth
+      self.oldHealth = self.target.health
+      return res
    end
    
    return object

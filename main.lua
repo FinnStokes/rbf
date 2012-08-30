@@ -31,7 +31,7 @@ function putCircuit(c)
 end
 
 function getCircuit(c)
-   local inputstr = "0"--http.request(server)
+   local inputstr = ""--http.request(server)
    for i = 2,32*32 do
      inputstr = inputstr .. ",0"
    end
@@ -55,18 +55,22 @@ function love.load()
    c2 = circuit.new({size=512,width=32,height=32,xOffset=128,yOffset=64})
    r2 = robot.new({circuit = c2})
    
-   r1.inputs[1] = robot.range({robot=r1,target=r2,threshold=50,position=8,label="Far (50)"})
-   r1.inputs[2] = robot.range({robot=r1,target=r2,threshold=20,position=16,label="Mid (20)"})
-   r1.inputs[3] = robot.range({robot=r1,target=r2,threshold=10,position=24,label="Close (10)"})
+   r1.inputs[1] = robot.range({robot=r1,target=r2,upper=50,lower=20,position=5,label="Far"})
+   r1.inputs[2] = robot.range({robot=r1,target=r2,upper=20,lower=10,position=10,label="Mid"})
+   r1.inputs[3] = robot.range({robot=r1,target=r2,upper=10,lower=0,position=15,label="Close"})
+   r1.inputs[4] = robot.direction({robot=r1,target=r2,position=22,label="Behind"})
+   r1.inputs[5] = robot.damage({target=r1,position=27,label="Damage"})
    r1.outputs[1] = weapons.laser({robot=r1,target=r2,damage=0.5,position=5,label="Laser"})
    r1.outputs[2] = weapons.rocket({robot=r1,target=r2,damage=0.7,position=10,label="Rocket"})
    r1.outputs[3] = weapons.claw({robot=r1,target=r2,damage=0.7,position=15,label="Claw"})
    r1.outputs[4] = robot.walk({robot=r1,vel=1,position=22,label="Forwards"})
    r1.outputs[5] = robot.walk({robot=r1,vel=-1,position=27,label="Backwards"})
 
-   r2.inputs[1] = robot.range({robot=r2,target=r1,threshold=50,position=8,label="Far (50)"})
-   r2.inputs[2] = robot.range({robot=r2,target=r1,threshold=20,position=16,label="Mid (20)"})
-   r2.inputs[3] = robot.range({robot=r2,target=r1,threshold=10,position=24,label="Close (10)"})
+   r2.inputs[1] = robot.range({robot=r2,target=r1,upper=50,lower=20,position=5,label="Far"})
+   r2.inputs[2] = robot.range({robot=r2,target=r1,upper=20,lower=10,position=10,label="Mid"})
+   r2.inputs[3] = robot.range({robot=r2,target=r1,upper=10,lower=0,position=15,label="Close"})
+   r2.inputs[4] = robot.direction({robot=r2,target=r1,position=22,label="Behind"})
+   r2.inputs[5] = robot.damage({target=r2,position=27,label="Damage"})
    r2.outputs[1] = weapons.laser({robot=r2,target=r1,damage=0.5,position=5,label="Laser"})
    r2.outputs[2] = weapons.rocket({robot=r2,target=r1,damage=0.7,position=10,label="Rocket"})
    r2.outputs[3] = weapons.claw({robot=r2,target=r1,damage=0.7,position=15,label="Claw"})
