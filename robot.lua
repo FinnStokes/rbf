@@ -10,7 +10,7 @@ function M.new(arg)
    }
    local object = {
       health = arg.health or 100,
-      position = arg.position or 0,
+      position = arg.position or 20,
       inputs = {},
       outputs = {},
       dead = false,
@@ -34,7 +34,7 @@ function M.new(arg)
    function object.reset()
       object.dead = false
       object.health = arg.health or 100
-      object.position = arg.position or 0
+      object.position = arg.position or 20
       
       for _,i in ipairs(object.inputs) do
          i.reset()
@@ -107,9 +107,8 @@ function M.ctsInput(arg)
    }
    function object.update(circuit)
       super.update(circuit)
-      self.ticks = self.ticks - 1
-      if self.ticks <= 0 and object.on() then
-         self.ticks = self.period
+      self.ticks = self.ticks + 1
+      if self.ticks % self.period == 0 and object.on() then
          object.ping(circuit)
       end
    end
@@ -156,6 +155,8 @@ function M.ctsOutput(arg)
    local self = {
       period = arg.period or 8,
       ticks = 0,
+      pinged = false,
+      position = arg.position or 1,
    }
    local object = M.output(arg)
    
@@ -167,15 +168,19 @@ function M.ctsOutput(arg)
    }  
    
    function object.output()
-      object.on = true
-      self.ticks = self.period
    end
    
    function object.update(circuit)
-      super.update(circuit)
-      self.ticks = self.ticks - 1
-      if self.ticks < 0 then
-         object.on = false
+      if circuit.cells[self.position*circuit.width()] == 1 then
+         self.pinged = true
+      end
+      self.ticks = self.ticks + 1
+      if self.ticks % self.period == 0 and self.pinged then
+         self.pinged = false
+         object.on = true
+         object.output()
+      else
+        object.on = false
       end
    end
    
@@ -211,15 +216,8 @@ function M.walk(arg)
    }
    local object = M.ctsOutput(arg)
    
-   local super = {
-      update = object.update
-   }
-   
-   function object.update(circuit)
-      super.update(circuit)
-      if object.on then
-         self.robot.position = math.min(math.max(self.robot.position + self.velocity, 0), 100)
-      end
+   function object.output()
+     self.robot.position = math.min(math.max(self.robot.position + self.velocity, 0), 100)
    end
    
    return object
