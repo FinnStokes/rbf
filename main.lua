@@ -18,6 +18,8 @@ local smallfont = nil
 local bigfont = nil
 local status = "Welcome"
 
+local stepTime = 0.05
+
 local server = "http://rbf-game.appspot.com/"
 
 function putCircuit(c)
@@ -25,16 +27,16 @@ function putCircuit(c)
    for i = 2,#c.cells do
       string = string .. "," .. c.cells[i]
    end
-   http.request(server,"cells="..string)
+   --http.request(server,"cells="..string)
 end
 
 function getCircuit(c)
-   local inputstr = http.request(server)
-   if sep == nil then
-      sep = ","
+   local inputstr = "0"--http.request(server)
+   for i = 2,32*32 do
+     inputstr = inputstr .. ",0"
    end
    t={} ; i=1
-   for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+   for str in string.gmatch(inputstr, "([^,]+)") do
       t[i] = tonumber(str)
       i = i + 1
    end
@@ -118,19 +120,23 @@ function love.update(dt)
    if not paused then
       time = time + dt
    end
-   while time > 0.1 do
+   while time > stepTime do
       r1.update()
       r2.update()
-      time = time - 0.1
+      time = time - stepTime
    end
    if r1.dead then
       status = "You lose"
+      c1.undo()
+      c2.undo()
       r2.reset()
       r1.reset()
       paused = true
    end
    if r2.dead then
       status = "You win"
+      c1.undo()
+      c2.undo()
       r1.reset()
       r2.reset()
       paused = true
@@ -210,8 +216,12 @@ function love.keypressed(key, unicode)
          status = "Loading"
          putCircuit(c1)
          getCircuit(c2)
+         c1.save()
+         c2.save()
          status = "Running"
       else
+         c1.undo()
+         c2.undo()
          status = "Aborted"
       end
       r1.reset()
@@ -219,6 +229,14 @@ function love.keypressed(key, unicode)
    elseif key == 'l' and paused then
       c1.save()
       copyCircuit(c2,c1)
+   elseif key == '1' then
+      stepTime = 0.5
+   elseif key == '2' then
+      stepTime = 0.05
+   elseif key == '3' then 
+      stepTime = 0.025
+   elseif key == '4' then
+      stepTime = 0.0125
    elseif key == 'z' and paused and (love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')) then
       c1.undo()
    end
