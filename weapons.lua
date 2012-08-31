@@ -15,19 +15,14 @@ function M.weapon(arg)
       update = object.update
    }
 
-   function object.update(circuit)
-      super.update(circuit)
-      if object.on then
-         local n = 0
-         for i = 1,#arg.robot.weapons do
-            if arg.robot.weapons[i].on then
-               n = n + 1
-            end
-         end
-         object.power = 1.0/n
-      else
-         object.power = 0.0
-      end
+   function object.output()
+     local n = 0
+     for i = 1,#arg.robot.weapons do
+       if arg.robot.weapons[i].on then
+         n = n + 1
+       end
+     end
+     object.power = 1.0/n
    end
    
    if arg.robot then
@@ -49,14 +44,12 @@ function M.laser(arg)
    local object = M.weapon(arg)
 
    local super = {
-      update = object.update
+      output = object.output
    }
 
-   function object.update(circuit)
-      super.update(circuit)
-      if object.on then
-         self.target.health = self.target.health - self.damage*object.power
-      end
+   function object.output()
+      super.output()
+      self.target.health = self.target.health - self.damage*object.power
    end
    
    return object
@@ -68,20 +61,30 @@ function M.rocket(arg)
       target = arg.target,
       threshold = arg.threshold or 10,
       damage = arg.damage or 1,
+      cooldown = arg.cooldown or 32
    }
    local object = M.weapon(arg)
 
    local super = {
-      update = object.update
+      output = object.output,
+      update = object.update,
    }
 
+   local cooldown = 0
+
    function object.update(circuit)
-      super.update(circuit)
-      if object.on then
-         self.target.health = self.target.health - self.damage*object.power
-         if math.abs(100 - object.robot.position - self.target.position) <= self.threshold then
-            object.robot.health = object.robot.health - self.damage*object.power
-         end
+     cooldown = cooldown - 1
+     super.update(circuit)
+   end
+
+   function object.output()
+      super.output()
+      if cooldown <= 0 then
+        self.target.health = self.target.health - self.damage*object.power
+        if math.abs(100 - object.robot.position - self.target.position) <= self.threshold then
+          object.robot.health = object.robot.health - self.damage*object.power
+        end
+        cooldown = self.cooldown
       end
    end
    
@@ -98,11 +101,11 @@ function M.claw(arg)
    local object = M.weapon(arg)
 
    local super = {
-      update = object.update
+      output = object.output
    }
 
-   function object.update(circuit)
-      super.update(circuit)
+   function object.output()
+      super.output()
       if object.on then
          if math.abs(100 - object.robot.position - self.target.position) <= self.threshold then
             self.target.health = self.target.health - self.damage*object.power
