@@ -2,12 +2,16 @@ local circuit = require "circuit"
 local robot = require "robot"
 local weapons = require "weapons"
 local http = require("socket.http")
+local line = require "line"
 
 local cmap = {{16,16,16,0}, {0,0,255,64}, {255,0,0,64}, {255,255,0,64}}
+local xoff = 128
+local yoff = 64
 
 local paused = true
 local selecting = false
 local selected = nil
+local currentLine = nil
 local time = 0
 local dragAction = -1
 local startX = -1
@@ -50,9 +54,9 @@ function copyCircuit(a,b)
 end
 
 function love.load()
-   c1 = circuit.new({size=512,width=32,height=32,xOffset=128,yOffset=64})
+   c1 = circuit.new({size=512,width=32,height=32,xOffset=xoff,yOffset=yoff})
    r1 = robot.new({circuit = c1})
-   c2 = circuit.new({size=512,width=32,height=32,xOffset=128,yOffset=64})
+   c2 = circuit.new({size=512,width=32,height=32,xOffset=xoff,yOffset=yoff})
    r2 = robot.new({circuit = c2})
    
    r1.inputs[1] = robot.range({robot=r1,target=r2,upper=50,lower=20,position=5,label="Far"})
@@ -99,7 +103,6 @@ function love.draw()
    love.graphics.rectangle("fill", 195+r1.position*3.75, 30, 10, 15)
    love.graphics.rectangle("fill", 570-r2.position*3.75, 30, 10, 15)
    
-
    if selecting and paused then
       love.graphics.setLine(1, "smooth")
       love.graphics.setColor({200,200,200})
@@ -117,6 +120,8 @@ function love.draw()
       selected.draw()
       love.graphics.translate(-x*scale, -y*scale)
       love.graphics.rectangle("line", x*scale, y*scale, selected.width()*scale, selected.height()*scale)
+   elseif dragAction == 3 and paused then
+      currentLine.draw()
    end
 end
 
@@ -149,21 +154,44 @@ function love.update(dt)
    if dragAction >= 0 then
       local x = love.mouse.getX()
       local y = love.mouse.getY()
-      c1.setCell(x, y, dragAction)
-      if oldX > 0 and oldY > 0 then
-         local dx = x-oldX
-         local dy = y-oldY
-         local norm = math.sqrt(dx*dx+dy*dy)
-         if norm > 1 then
-            dx = dx/norm
-            dy = dy/norm
-            for dist = 1,math.floor(norm) do
-               c1.setCell(oldX+dist*dx, oldY+dist*dy, dragAction)
+      if dragAction == 3 then
+         if x < c1.xoff or x > c1.xoff + c1.width()*c1.scale() or y < c1.yoff or y > c1.yoff + c1.height()*c1.scale() then
+            local dx = x - oldX
+            local dy = y - oldY
+            local tx = 1
+            if dx < 0 then
+               tx = (c1.xoff-oldX)/dx
+            else
+               tx = (c1.xoff+c1.width()*c1.scale()-oldX)/dx
+            end
+            local ty = 1
+            if dy < 0 then
+               ty = (c1.yoff-oldY)/dy
+            else
+               ty = (c1.yoff+c1.height()*c1.scale()-oldY)/dy
+            end
+            local truncate = math.min(tx,ty)
+            x = oldX + truncate*dx
+            y = oldY + truncate*dy
+         end
+         currentLine.to(x,y)
+      else
+         c1.setCell(x, y, dragAction)
+         if oldX > 0 and oldY > 0 then
+            local dx = x-oldX
+            local dy = y-oldY
+            local norm = math.sqrt(dx*dx+dy*dy)
+            if norm > 1 then
+               dx = dx/norm
+               dy = dy/norm
+               for dist = 1,math.floor(norm) do
+                  c1.setCell(oldX+dist*dx, oldY+dist*dy, dragAction)
+               end
             end
          end
+         oldX = x
+         oldY = y
       end
-      oldX = x
-      oldY = y
    else
       oldX = -1
       oldy = -1
@@ -180,8 +208,14 @@ function love.mousepressed(x, y, button)
             c1.cycleWire(x,y)
          else
             dragAction = c1.toggleOff(x,y)
+            if dragAction == 3 then
+               c1.toggleOff(x,y)
+            end
             oldX = x
             oldY = y
+            if dragAction == 3 then
+               currentLine = line.new{x=x,y=y,xOffset=xoff,yOffset=yoff,scale=c1.scale(),colourmap=cmap}
+            end
          end
       elseif button == 'r' then
          selecting = true
@@ -193,6 +227,12 @@ end
 
 function love.mousereleased(x, y, button)
    if button == 'l' then
+      if dragAction == 3 then
+         if paused then
+            currentLine.pasteInto(c1)
+         end
+         currentLine = nil
+      end
       dragAction = -1
    elseif paused and button == 'r' and selecting then
       c1.save()
