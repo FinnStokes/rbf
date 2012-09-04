@@ -29,6 +29,52 @@ function M.new(arg)
       end
    end
 
+   function object.serialise()
+      local string = object.cells[1]
+      for i = 2,#object.cells do
+         string = string .. "," .. object.cells[i]
+      end
+      return string
+   end
+   
+   function object.deserialise(inputstr)
+      local t = {}
+      local i = 1
+      for str in string.gmatch(inputstr, "([^,]+)") do
+         t[i] = tonumber(str)
+         i = i + 1
+      end
+      if #t ~= #object.cells then
+         print("Invalid string passed to circuit.deserialise, ignoring")
+      else
+         object.cells = t
+      end
+   end
+
+   function object.write(filename)
+      if love.filesystem.exists(filename) then
+         love.filesystem.remove(filename)
+      end
+      local str = object.serialise()
+      local success = love.filesystem.write(filename,str,2047)
+      if not success then
+         print("Failed to save to '",filename,"'")
+      end
+   end
+
+   function object.read(filename)
+      if not love.filesystem.exists(filename) then
+         print("Cannot open file: '",filename,"' does not exist")
+         return
+      end
+      self.history[#self.history+1] = {}
+      for i = 1,#object.cells do
+         self.history[#self.history][i] = object.cells[i]
+      end
+      local str, size = love.filesystem.read(filename,2047)
+      object.deserialise(str)
+   end
+
    function object.save()
       self.history[#self.history+1] = {}
       for i = 1,#object.cells do

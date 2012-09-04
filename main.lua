@@ -7,6 +7,7 @@ local line = require "line"
 local cmap = {{16,16,16,0}, {0,0,255,64}, {255,0,0,64}, {255,255,0,64}}
 local xoff = 128
 local yoff = 64
+local autosave = "autosave"
 
 local paused = true
 local selecting = false
@@ -27,24 +28,15 @@ local stepTime = 0.05
 local server = "http://rbf-game.appspot.com/"
 
 function putCircuit(c)
-   local string = c.cells[1]
-   for i = 2,#c.cells do
-      string = string .. "," .. c.cells[i]
-   end
-   --http.request(server,"cells="..string)
+   --http.request(server,"cells="..c.serialise())
 end
 
 function getCircuit(c)
-   local inputstr = ""--http.request(server)
+   local inputstr = "0"--http.request(server)
    for i = 2,32*32 do
      inputstr = inputstr .. ",0"
    end
-   t={} ; i=1
-   for str in string.gmatch(inputstr, "([^,]+)") do
-      t[i] = tonumber(str)
-      i = i + 1
-   end
-   c.cells = t
+   c.deserialise(inputstr)
 end
 
 function copyCircuit(a,b)   
@@ -54,10 +46,15 @@ function copyCircuit(a,b)
 end
 
 function love.load()
+   love.filesystem.setIdentity("rbf")
    c1 = circuit.new({size=512,width=32,height=32,xOffset=xoff,yOffset=yoff})
    r1 = robot.new({circuit = c1})
    c2 = circuit.new({size=512,width=32,height=32,xOffset=xoff,yOffset=yoff})
    r2 = robot.new({circuit = c2})
+
+   if love.filesystem.exists(autosave) then
+      c1.read(autosave)
+   end
    
    r1.inputs[1] = robot.range({robot=r1,target=r2,upper=50,lower=20,position=5,label="Far"})
    r1.inputs[2] = robot.range({robot=r1,target=r2,upper=20,lower=10,position=10,label="Mid"})
@@ -217,6 +214,7 @@ function love.mousepressed(x, y, button)
                currentLine = line.new{x=x,y=y,xOffset=xoff,yOffset=yoff,scale=c1.scale(),colourmap=cmap}
             end
          end
+         c1.write(autosave)
       elseif button == 'r' then
          selecting = true
          startX = x
@@ -229,7 +227,9 @@ function love.mousereleased(x, y, button)
    if button == 'l' then
       if dragAction == 3 then
          if paused then
+            c1.save()
             currentLine.pasteInto(c1)
+            c1.write(autosave)
          end
          currentLine = nil
       end
@@ -246,10 +246,9 @@ function love.mousereleased(x, y, button)
          end
       end
       selected.colourmap = cmap
+      c1.write(autosave)
    end
 end
-
-local save = nil
 
 function love.keypressed(key, unicode)
    if key == 'escape' then
@@ -284,4 +283,8 @@ function love.keypressed(key, unicode)
    elseif key == 'z' and paused and (love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')) then
       c1.undo()
    end
+end
+
+function love.quit()
+   c1.write(autosave)
 end
